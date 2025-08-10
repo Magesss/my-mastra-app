@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config(); // 加载 .env 文件
+
 import { createServer } from 'http';
 import { createYoga } from 'graphql-yoga';
 import { makeExecutableSchema } from '@graphql-tools/schema';
