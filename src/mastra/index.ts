@@ -5,6 +5,7 @@ import { PinoLogger } from '@mastra/loggers';
 import { weatherWorkflow } from './workflows/weather-workflow';
 import { weatherAgent } from './agents/weather-agent';
 import { CloudflareDeployer } from "@mastra/deployer-cloudflare";
+import { graphqlServer } from '../graphql/server';
 
 
 export const mastra = new Mastra({
@@ -22,5 +23,14 @@ export const mastra = new Mastra({
       CLOUDFLARE_API_EMAIL: "Maqingjie646@gmail.com"
     },
     projectName: "hello-mastra"
-  })
+  }),
+  middleware: [
+    async (c, next) => {
+      // 添加 GraphQL 路由
+      if (c.req.path.startsWith('/graphql')) {
+        return graphqlServer.handleRequest(c.req.raw, c.env);
+      }
+      await next();
+    }
+  ]
 });
