@@ -24,45 +24,22 @@ export const mastra = new Mastra({
     },
     projectName: "hello-mastra"
   }),
-  apis: [
-    {
-      path: '/api/weather',
-      method: 'POST',
-      handler: async (c) => {
+  middleware: [
+    async (c, next) => {
+      // 直接处理GraphQL路由
+      if (c.req.path === '/graphql' || c.req.path === '/api/graphql') {
         try {
-          const body = await c.req.json();
-          const message = body.message || body.input;
-          
-          const result = await weatherAgent.generate([
-            { role: 'user', content: message }
-          ]);
-
-          return c.json({
-            success: true,
-            message: {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: result.text,
-              timestamp: new Date().toISOString()
-            },
-            error: null
-          });
+          // 使用真正的GraphQL服务器
+          const response = await graphqlServer.fetch(c.req.raw, c.env);
+          return response;
         } catch (error) {
-          console.error('Weather query error:', error);
+          console.error('GraphQL error:', error);
           return c.json({
-            success: false,
-            message: null,
-            error: error instanceof Error ? error.message : 'Unknown error occurred'
-          });
+            errors: [{ message: 'GraphQL server error' }]
+          }, 500);
         }
       }
-    },
-    {
-      path: '/api/hello',
-      method: 'GET',
-      handler: async (c) => {
-        return c.json({ message: "Hello from Mastra Weather API!" });
-      }
+      await next();
     }
   ]
 });
