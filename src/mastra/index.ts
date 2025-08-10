@@ -24,22 +24,71 @@ export const mastra = new Mastra({
     },
     projectName: "hello-mastra"
   }),
-  middleware: [
-    async (c, next) => {
-      // 直接处理GraphQL路由
-      if (c.req.path === '/graphql' || c.req.path === '/api/graphql') {
+  apis: [
+    {
+      path: '/graphql',
+      method: 'POST',
+      handler: async (c) => {
         try {
-          // 使用真正的GraphQL服务器
-          const response = await graphqlServer.fetch(c.req.raw, c.env);
-          return response;
+          const body = await c.req.json();
+          const { query, variables } = body;
+          
+          // 处理hello查询
+          if (query && query.includes('hello')) {
+            return c.json({
+              data: {
+                hello: "Hello from Mastra Weather GraphQL API!"
+              }
+            });
+          }
+          
+          // 处理getWeather mutation
+          if (query && query.includes('getWeather')) {
+            const input = variables?.input;
+            if (!input) {
+              return c.json({
+                errors: [{ message: 'Input is required for weather query' }]
+              });
+            }
+            
+            const result = await weatherAgent.generate([
+              { role: 'user', content: input }
+            ]);
+
+            return c.json({
+              data: {
+                getWeather: {
+                  success: true,
+                  message: {
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content: result.text,
+                    timestamp: new Date().toISOString()
+                  },
+                  error: null
+                }
+              }
+            });
+          }
+          
+          return c.json({
+            errors: [{ message: 'Unknown query or mutation' }]
+          });
         } catch (error) {
           console.error('GraphQL error:', error);
           return c.json({
-            errors: [{ message: 'GraphQL server error' }]
-          }, 500);
+            errors: [{ message: error instanceof Error ? error.message : 'Unknown error occurred' }]
+          });
         }
       }
-      await next();
+    },
+    {
+      path: '/graphql',
+      method: 'GET',
+      handler: async (c) => {
+        return c.text('GraphQL endpoint is available at POST /graphql');
+      }
     }
   ]
 });
+
