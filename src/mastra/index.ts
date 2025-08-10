@@ -30,6 +30,13 @@ export const mastra = new Mastra({
       method: 'POST',
       handler: async (c) => {
         try {
+          // 添加CORS头
+          const corsHeaders = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          };
+
           const body = await c.req.json();
           const { query, variables } = body;
           
@@ -39,7 +46,7 @@ export const mastra = new Mastra({
               data: {
                 hello: "Hello from Mastra Weather GraphQL API!"
               }
-            });
+            }, { headers: corsHeaders });
           }
           
           // 处理getWeather mutation
@@ -48,7 +55,7 @@ export const mastra = new Mastra({
             if (!input) {
               return c.json({
                 errors: [{ message: 'Input is required for weather query' }]
-              });
+              }, { headers: corsHeaders });
             }
             
             const result = await weatherAgent.generate([
@@ -68,25 +75,57 @@ export const mastra = new Mastra({
                   error: null
                 }
               }
-            });
+            }, { headers: corsHeaders });
           }
           
           return c.json({
             errors: [{ message: 'Unknown query or mutation' }]
-          });
+          }, { headers: corsHeaders });
         } catch (error) {
           console.error('GraphQL error:', error);
           return c.json({
             errors: [{ message: error instanceof Error ? error.message : 'Unknown error occurred' }]
+          }, {
+            status: 500,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            }
           });
         }
       }
     },
     {
       path: '/graphql',
+      method: 'OPTIONS',
+      handler: async (c) => {
+        return c.text('', {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          }
+        });
+      }
+    },
+    {
+      path: '/graphql',
       method: 'GET',
       handler: async (c) => {
-        return c.text('GraphQL endpoint is available at POST /graphql');
+        return c.json({
+          message: 'GraphQL endpoint is available at POST /graphql',
+          endpoints: [
+            'query { hello }',
+            'mutation { getWeather(input: "your question") }'
+          ]
+        }, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          }
+        });
       }
     }
   ]
